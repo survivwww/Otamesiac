@@ -183,7 +183,7 @@
     currentStage = index;
     const spec = stageSpecs[index];
     world = {
-      spec, time:0, player:{x:spec.spawn.x,y:0,vx:0,vy:0,w:22,h:54,onGround:false,face:1,anim:0,dead:false},
+      spec, time:0, player:{x:spec.spawn.x,y:0,vx:0,vy:0,w:22,h:49,onGround:false,moverId:null,face:1,anim:0,dead:false},
       enemies:spec.enemies.map(e => ({...e,baseY:e.y,dir:1,phase:Math.random()*4,alive:true,stun:0})),
       movers:spec.movers.map(m => ({...m,baseX:m.x,baseY:m.y,px:m.x,py:m.y})),
       switches:spec.switches.map(s => ({...s,used:false})),
@@ -221,7 +221,7 @@
   }
   function respawn() {
     const p = world.player, spec = world.spec;
-    p.x = Math.max(20,world.checkpointX); p.y = 0; p.vx=0; p.vy=0; p.onGround=false;
+    p.x = Math.max(20,world.checkpointX); p.y = 0; p.vx=0; p.vy=0; p.onGround=false; p.moverId=null;
     world.invuln = 1.25;
   }
 
@@ -236,11 +236,23 @@
     const w = world, p = w.player, spec = w.spec;
     w.time += dt; p.anim += dt * (Math.abs(controls.left || controls.right ? 8 : 2));
     if (w.invuln > 0) w.invuln -= dt;
+    // Update moving platforms first so their motion can carry a player standing on them.
+    for (const m of w.movers) {
+      m.px = m.x; m.py = m.y;
+      const wave = Math.sin(w.time*m.speed*2 + m.phase);
+      if (m.axis === "x") m.x = m.baseX + wave*m.range;
+      else m.y = m.baseY + wave*m.range;
+    }
+    if (p.moverId != null && p.onGround) {
+      const m = w.movers[p.moverId];
+      if (m) { p.x += m.x-m.px; p.y += m.y-m.py; }
+    }
+
     // Direct movement: no acceleration or inertia.
     const speed = currentStage === 2 ? 245 : 230;
     p.vx = (controls.right ? speed : 0) - (controls.left ? speed : 0);
     if (p.vx) p.face = Math.sign(p.vx);
-    if (controls.jump && !jumpWasDown && p.onGround) { p.vy = 620; p.onGround = false; }
+    if (controls.jump && !jumpWasDown && p.onGround) { p.vy = 760; p.onGround = false; p.moverId = null; }
     jumpWasDown = controls.jump;
     p.vy -= GRAVITY*dt;
     p.x += p.vx*dt;
@@ -248,33 +260,28 @@
     const oldY = p.y;
     p.y += p.vy*dt;
     p.onGround = false;
+    p.moverId = null;
 
     // Static platforms: coordinates are measured up from the floor.
     const oldBottom = oldY + p.h;
     const newBottom = p.y + p.h;
     for (const plat of spec.platforms) {
       const [x,y,width,height] = plat;
-      const screenTop = groundY() - y - height;
-      const screenBottom = groundY() - y;
-      const prevScreenBottom = groundY() - oldBottom;
-      const nextScreenBottom = groundY() - newBottom;
-      // Player coordinate is bottom-up world units; land when falling onto platform.
+      // Player coordinate is bottom-up world units; land when falling onto the top surface.
       if (p.vy <= 0 && p.x+p.w > x && p.x < x+width && oldY >= y+height-2 && p.y <= y+height && y > 0) {
-        p.y = y+height; p.vy=0; p.onGround=true;
+        p.y = y+height; p.vy=0; p.onGround=true; p.moverId=null;
       }
       // Ground platform
       if (y === 0 && p.x+p.w > x && p.x < x+width && p.y+p.h >= 0) {
         // Gaps are handled by falling below the world.
       }
     }
-    // Movers move on their own simple loops and can be stood on.
-    for (const m of w.movers) {
-      m.px = m.x; m.py = m.y;
-      const wave = Math.sin(w.time*m.speed*2 + m.phase);
-      if (m.axis === "x") m.x = m.baseX + wave*m.range;
-      else m.y = m.baseY + wave*m.range;
-      if (p.vy <= 0 && p.x+p.w > m.x && p.x < m.x+m.w && oldY >= m.y && p.y <= m.y) {
-        p.y = m.y; p.vy=0; p.onGround=true;
+    // Moving-platform collision uses the platform's top surface (y + height).
+    for (let i=0; i<w.movers.length; i++) {
+      const m = w.movers[i], surfaceY = m.y + m.h;
+      if (p.vy <= 0 && p.x+p.w > m.x && p.x < m.x+m.w &&
+          oldY >= Math.min(m.py,m.y)+m.h-2 && p.y <= surfaceY) {
+        p.y = surfaceY; p.vy=0; p.onGround=true; p.moverId=i;
       }
     }
     // Floor sections; gaps are pits. Platforms with y=0 are floor strips.
@@ -359,7 +366,8 @@
     // Platforms and floor
     ctx.fillStyle="#111";
     for (const [x,y,width,height] of spec.platforms) {
-      const sy=ground-y-height;
+      // y=0 strips are the floor and extend below the walking surface.
+      const sy = y === 0 ? ground : ground-y-height;
       ctx.fillRect(x,sy,width,height);
       ctx.fillStyle="#777"; ctx.fillRect(x,sy,width,3); ctx.fillStyle="#111";
     }
