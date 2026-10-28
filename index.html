@@ -122,7 +122,7 @@
     {
       name:"動く足場", width:2250, spawn:{x:45,y:0}, goalX:2150,
       platforms:[[0,0,270,28],[430,0,230,28],[820,0,220,28],[1200,0,220,28],[1600,0,250,28],[1990,0,260,28],[280,110,85,16],[650,150,95,16],[1030,105,90,16],[1430,145,100,16],[1850,110,90,16]],
-      enemies:[{type:"walker",x:155,y:0,min:75,max:245,speed:72,w:28,h:28},{type:"hopper",x:870,y:0,min:830,max:1000,speed:85,w:28,h:28},{type:"charger",x:1660,y:0,min:1610,max:1815,speed:130,w:32,h:28}],
+      enemies:[{type:"walker",x:155,y:0,min:75,max:245,speed:72,w:28,h:28},{type:"hopper",x:870,y:0,min:830,max:1000,speed:85,w:28,h:28},{type:"charger",x:1345,y:0,min:1235,max:1390,speed:105,w:32,h:28}],
       hazards:[[270,0,160,28],[660,0,160,28],[1040,0,160,28],[1420,0,180,28],[1850,0,140,28]],
       movers:[{x:340,y:145,w:85,h:16,axis:"y",range:85,speed:1.1,phase:0.2},{x:700,y:205,w:90,h:16,axis:"x",range:70,speed:1.3,phase:1.2},{x:1090,y:160,w:90,h:16,axis:"y",range:90,speed:1.0,phase:2.1},{x:1510,y:145,w:85,h:16,axis:"x",range:55,speed:0.85,phase:0.8}],
       switches:[{x:930,y:0,r:14,used:false}], gates:[{x:1880,y:0,w:20,h:120,open:false,switchIndex:0}], movingSpikes:[], wind:0
@@ -314,7 +314,7 @@
       const ex = e.x, ey = e.y;
       if (rects(p.x,p.y,p.w,p.h,ex,ey,e.w,e.h)) {
         // Jumping on an enemy defeats it; side contact costs a life attempt.
-        if (p.vy < -80 && p.y > ey + e.h*0.45) { e.alive=false; p.vy=340; }
+        if (p.vy < -80 && p.y > ey + e.h*0.45) { e.alive=false; p.vy = (e.type === "charger" ? 700 : 340); }
         else if (w.invuln<=0) { respawn(); return; }
       }
     }
