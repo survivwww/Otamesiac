@@ -314,7 +314,7 @@
       const ex = e.x, ey = e.y;
       if (rects(p.x,p.y,p.w,p.h,ex,ey,e.w,e.h)) {
         // Jumping on an enemy defeats it; side contact costs a life attempt.
-        if (p.vy < -80 && p.y > ey + e.h*0.45) { e.alive=false; p.vy = (e.type === "charger" ? 700 : 340); }
+        if (p.vy < -80 && p.y > ey + e.h*0.45) { e.alive=false; p.vy = (e.type === "charger" ? 840 : 340); }
         else if (w.invuln<=0) { respawn(); return; }
       }
     }
